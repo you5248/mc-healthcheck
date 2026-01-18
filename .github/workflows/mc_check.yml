@@ -2,7 +2,7 @@ name: Minecraft Daily Healthcheck
 
 on:
   schedule:
-    # 毎日 11:00 JST = 02:00 UTC
+    # 毎日 18:00 JST = 09:00 UTC
     - cron: "0 9 * * *"
   workflow_dispatch: {}
 
