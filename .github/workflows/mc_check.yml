@@ -3,7 +3,7 @@ name: Minecraft Daily Healthcheck
 on:
   schedule:
     # 毎日 11:00 JST = 02:00 UTC
-    - cron: "0 2 * * *"
+    - cron: "0 9 * * *"
   workflow_dispatch: {}
 
 jobs:
@@ -14,7 +14,7 @@ jobs:
       - name: Check TCP connectivity to Minecraft server
         env:
           MC_HOST: ${{ secrets.MC_HOST || 'cyaraland.tplinkdns.com' }}
-          MC_PORT: ${{ secrets.MC_PORT || '25565' }}
+          MC_PORT: ${{ secrets.MC_PORT || '25566' }}
         run: |
           python - <<'PY'
           import os, socket, sys
@@ -47,7 +47,7 @@ jobs:
           webhook = os.environ["DISCORD_WEBHOOK_URL"]
           role_id = os.environ.get("DISCORD_ROLE_ID","").strip()
           host = os.getenv("MC_HOST", "cyaraland.tplinkdns.com")
-          port = os.getenv("MC_PORT", "25565")
+          port = os.getenv("MC_PORT", "25566")
 
           mention = f"<@&{role_id}> " if role_id else ""
           payload = {
