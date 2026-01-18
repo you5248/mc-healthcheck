@@ -1,0 +1,62 @@
+name: Minecraft Daily Healthcheck
+
+on:
+  schedule:
+    # 毎日 11:00 JST = 02:00 UTC
+    - cron: "0 2 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check TCP connectivity to Minecraft server
+        env:
+          MC_HOST: ${{ secrets.MC_HOST || 'cyaraland.tplinkdns.com' }}
+          MC_PORT: ${{ secrets.MC_PORT || '25565' }}
+        run: |
+          python - <<'PY'
+          import os, socket, sys
+          host = os.getenv("MC_HOST", "cyaraland.tplinkdns.com")
+          port = int(os.getenv("MC_PORT", "25566"))
+          timeout = 5
+
+          s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+          s.settimeout(timeout)
+          try:
+            s.connect((host, port))
+            s.close()
+            print(f"OK: {host}:{port} reachable")
+            sys.exit(0)
+          except Exception as e:
+            print(f"NG: {host}:{port} unreachable: {e}")
+            sys.exit(1)
+          PY
+
+      - name: Notify Discord on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_ROLE_ID: ${{ secrets.DISCORD_ROLE_ID }}
+          MC_HOST: ${{ secrets.MC_HOST || 'cyaraland.tplinkdns.com' }}
+          MC_PORT: ${{ secrets.MC_PORT || '25566' }}
+        run: |
+          python - <<'PY'
+          import os, json, urllib.request
+          webhook = os.environ["DISCORD_WEBHOOK_URL"]
+          role_id = os.environ.get("DISCORD_ROLE_ID","").strip()
+          host = os.getenv("MC_HOST", "cyaraland.tplinkdns.com")
+          port = os.getenv("MC_PORT", "25565")
+
+          mention = f"<@&{role_id}> " if role_id else ""
+          payload = {
+            "content": f"{mention}❌ Minecraftサーバー応答なし（1日1回チェック）: {host}:{port}",
+            # メンションの誤爆制御（role_idがある場合のみrolesに限定）
+            "allowed_mentions": {"roles": [role_id]} if role_id else {"parse": []}
+          }
+
+          data = json.dumps(payload).encode("utf-8")
+          req = urllib.request.Request(webhook, data=data, headers={"Content-Type":"application/json"})
+          urllib.request.urlopen(req).read()
+          PY
